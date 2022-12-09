@@ -1,57 +1,90 @@
 import React from 'react';
+import { PostService } from './API/PostService';
 import { PostFilter } from './components/PostFilter';
 import { PostForm } from './components/PostForm';
 import { Posts } from './components/Posts';
+import { useFetching } from './hooks/useFetching';
+import { usePosts } from './hooks/usePosts';
 import { MyButton } from './UI/MyButton';
+import MyLoader from './UI/MyLoader';
 import MyModal from './UI/MyModal';
+import MyPagination from './UI/MyPagination';
+import { getPageCount, getPagesArray } from './utils/pages';
 
 export function App() {
-  const [posts, setPosts] = React.useState([
-    { id: 1, title: 'аа', body: 'гг' },
-    { id: 2, title: 'гг 2', body: 'аа' },
-  ]);
+  const [posts, setPosts] = React.useState([]);
   const [filter, setFilter] = React.useState({ sort: '', query: '' });
   const [modal, setModal] = React.useState(false);
-
-  const sortedPost = React.useMemo(() => {
-    console.log('Отработал сортед пост');
-    if (filter.sort) {
-      return [...posts].sort((a, b) =>
-        a[filter.sort].localeCompare(b[filter.sort])
-      );
-    }
-    return posts;
-  }, [filter.sort, posts]);
-
-  const sortedAndSearchedPosts = React.useMemo(() => {
-    return sortedPost.filter((post) =>
-      post.title.toLowerCase().includes(filter.query)
-    );
-  }, [filter.query, sortedPost]);
+  const [totalPages, setTotalPages] = React.useState(0);
+  const [limit, setLimit] = React.useState(10);
+  const [page, setPage] = React.useState(1);
+  const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
+  const [fetchPosts, isPostLoading, postError] = useFetching(async (limit, page) => {
+    const response = await PostService.getAll(limit, page);
+    setPosts(response.data);
+    const totalCount = response.headers['x-total-count'];
+    setTotalPages(getPageCount(totalCount, limit));
+  });
 
   const createNewPost = (newPost) => {
     setPosts([...posts, newPost]);
     setModal(false);
   };
 
+  React.useEffect(() => {
+    fetchPosts(limit, page);
+  }, []);
+
+  const changePage = (page) => {
+    setPage(page)
+    fetchPosts(limit,page)
+  }
+
   const removePost = (post) => {
     setPosts(posts.filter((p) => p.id !== post.id));
   };
+
   return (
     <div className="App">
-      <MyButton style={{ margin: '20px 0' }} onClick={() => setModal(true)}>
-        Создать пост
-      </MyButton>
-      <MyModal visible={modal} setVisible={setModal}>
-        <PostForm create={createNewPost} />
-        <hr style={{ margin: '15px 0' }} />
-      </MyModal>
-      <PostFilter filter={filter} setFilter={setFilter} />
-      <Posts
-        remove={removePost}
-        posts={sortedAndSearchedPosts}
-        title="Список постов"
-      />
+      {postError ? (
+        <h1 style={{ textAlign: 'center', color: 'red' }}>
+          Произошла ошибка ( ${postError} )
+        </h1>
+      ) : (
+        <>
+          <MyButton style={{ margin: '20px 0' }} onClick={() => setModal(true)}>
+            Создать пост
+          </MyButton>
+          <MyModal visible={modal} setVisible={setModal}>
+            <PostForm create={createNewPost} />
+            <hr style={{ margin: '15px 0' }} />
+          </MyModal>
+          <PostFilter filter={filter} setFilter={setFilter} />
+          {postError && (
+            <h1 style={{ textAlign: 'center', color: 'red' }}>
+              Произошла ошибка ( ${postError} )
+            </h1>
+          )}
+          {isPostLoading ? (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginTop: '50px',
+              }}
+            >
+              <MyLoader />
+            </div>
+          ) : (
+            <Posts
+              remove={removePost}
+              posts={sortedAndSearchedPosts}
+              title="Список постов"
+            />
+          )}
+          <MyPagination page={page} changePage={changePage} totalPages={totalPages}/>
+        </>
+      )}
     </div>
   );
 }
