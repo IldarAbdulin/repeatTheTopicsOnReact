@@ -1,3 +1,8 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 .App {
   width: 80%;
   margin: 0 auto;
@@ -11,7 +16,10 @@
   align-items: center;
   border: 3px solid teal;
 }
-
+.post__btns {
+  display: flex;
+  gap: 5px;
+}
 .posts-enter {
   opacity: 0;
 }
@@ -85,6 +93,29 @@
   border-radius: 50%;
   border: 3px dashed rgb(0, 0, 0);
   animation: rotate 1s infinite linear;
+}
+
+.myNavbar {
+  background: rgba(0, 0, 0, 0.208);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.navbar__links {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(41, 41, 41, 0.349);
+  border-radius: 20px;
+}
+.navbar__links a {
+  margin-right: 10px;
+  text-decoration: none;
+  font-size: 19px;
+  color: rgb(7, 7, 7);
 }
 
 @keyframes rotate {
