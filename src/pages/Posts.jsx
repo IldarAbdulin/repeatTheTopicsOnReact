@@ -4,12 +4,14 @@ import { PostFilter } from '../components/PostFilter';
 import { PostForm } from '../components/PostForm';
 import { Posts } from '../components/Posts';
 import { useFetching } from '../hooks/useFetching';
+import { useObserver } from '../hooks/useObserver';
 import { usePosts } from '../hooks/usePosts';
 import { MyButton } from '../UI/MyButton';
 import MyLoader from '../UI/MyLoader';
 import MyModal from '../UI/MyModal';
 import MyPagination from '../UI/MyPagination';
-import { getPageCount, getPagesArray } from '../utils/pages';
+import { MySelect } from '../UI/MySelect';
+import { getPageCount } from '../utils/pages';
 
 export const PostsPage = () => {
   const [posts, setPosts] = React.useState([]);
@@ -18,15 +20,21 @@ export const PostsPage = () => {
   const [totalPages, setTotalPages] = React.useState(0);
   const [limit, setLimit] = React.useState(10);
   const [page, setPage] = React.useState(1);
+  const lastElement = React.useRef();
+
   const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
   const [fetchPosts, isPostLoading, postError] = useFetching(
     async (limit, page) => {
       const response = await PostService.getAll(limit, page);
-      setPosts(response.data);
+      setPosts([...posts, ...response.data]);
       const totalCount = response.headers['x-total-count'];
       setTotalPages(getPageCount(totalCount, limit));
     }
   );
+
+  useObserver(lastElement, page < totalPages, isPostLoading, () => {
+    setPage(page + 1);
+  });
 
   const createNewPost = (newPost) => {
     setPosts([...posts, newPost]);
@@ -35,11 +43,10 @@ export const PostsPage = () => {
 
   React.useEffect(() => {
     fetchPosts(limit, page);
-  }, []);
+  }, [page, limit]);
 
   const changePage = (page) => {
     setPage(page);
-    fetchPosts(limit, page);
   };
 
   const removePost = (post) => {
@@ -67,7 +74,24 @@ export const PostsPage = () => {
               Произошла ошибка ( ${postError} )
             </h1>
           )}
-          {isPostLoading ? (
+          <MySelect
+            value={limit}
+            onChange={(value) => setLimit(value)}
+            defaultValue="Кол-во элементов на странице"
+            options={[
+              { value: 5, name: '5' },
+              { value: 10, name: '10' },
+              { value: 25, name: '25' },
+              { value: -1, name: 'Показать всё' },
+            ]}
+          />
+          <Posts
+            remove={removePost}
+            posts={sortedAndSearchedPosts}
+            title="Список постов"
+          />
+          <div ref={lastElement} style={{ height: 20, background: 'red' }} />
+          {isPostLoading && (
             <div
               style={{
                 display: 'flex',
@@ -77,13 +101,8 @@ export const PostsPage = () => {
             >
               <MyLoader />
             </div>
-          ) : (
-            <Posts
-              remove={removePost}
-              posts={sortedAndSearchedPosts}
-              title="Список постов"
-            />
           )}
+
           <MyPagination
             page={page}
             changePage={changePage}
